@@ -17,6 +17,13 @@ class Landscape:
         return self._objects
     
     def _setObjectNew(self, label, x, y, speed, acceleration, heading, state):
+        # 檢查坐標是否在有效範圍內
+        new_x = round(x)
+        new_y = round(y)
+        if new_x < 0 or new_y < 0 or new_x > self.dimension or new_y > self.dimension:
+            # 如果位置無效，不進行設置
+            return
+            
         self.total_objects += 1
 
         movement = 'vertical'
@@ -34,26 +41,38 @@ class Landscape:
             'state': state,
         }
 
-        self.map[round(x)][round(y)].append(self._objects[label])
+        self.map[new_x][new_y].append(self._objects[label])
 
     def setObject(self, label, x, y, speed, acceleration, heading, state):
+        # 檢查新位置是否在有效範圍內
+        new_x = round(x)
+        new_y = round(y)
+        if new_x < 0 or new_y < 0 or new_x > self.dimension or new_y > self.dimension:
+            # 如果新位置無效，不進行更新
+            return
+            
         if label not in self._objects:
             return self._setObjectNew(label, x, y, speed, acceleration, heading, state)
         
         old_x = round(self._objects[label]['x'])
         old_y = round(self._objects[label]['y'])
         
-        # check if x or y has changed
-        if round(x) != old_x or round(y) != old_y:
-            # remove from old position
-            to_iter = self.map[old_x][old_y] 
-            for index, e in enumerate(to_iter):
-                if e['label'] == label:
-                    del to_iter[index]
-                    break
+        # 檢查舊位置是否在有效範圍內
+        if old_x >= 0 and old_y >= 0 and old_x <= self.dimension and old_y <= self.dimension:
+            # check if x or y has changed
+            if new_x != old_x or new_y != old_y:
+                # remove from old position
+                to_iter = self.map[old_x][old_y] 
+                for index, e in enumerate(to_iter):
+                    if e['label'] == label:
+                        del to_iter[index]
+                        break
 
-            # add to new position
-            self.map[round(x)][round(y)].append(self._objects[label])
+                # add to new position
+                self.map[new_x][new_y].append(self._objects[label])
+        else:
+            # 如果舊位置無效，則只添加到新位置
+            self.map[new_x][new_y].append(self._objects[label])
 
         movement = 'vertical'
         if heading == 270 or heading == 90:
@@ -79,7 +98,7 @@ class Landscape:
         while i < x+check:
             j = y+radius
             while j > y-check:
-                if i >= 0 and j >= 0:
+                if i >= 0 and j >= 0 and i < self.dimension+1 and j < self.dimension+1:
                     if i != x or j != y:
                         points_to_check.append([i, j])
                 j -= 1
@@ -94,7 +113,13 @@ class Landscape:
         return result
 
     def getNeighborObject(self, x, y):
-        s = self.map[round(x)][round(y)]
+        # 添加邊界檢查，確保坐標在有效範圍內
+        x_rounded = round(x)
+        y_rounded = round(y)
+        if x_rounded < 0 or y_rounded < 0 or x_rounded > self.dimension or y_rounded > self.dimension:
+            return None
+            
+        s = self.map[x_rounded][y_rounded]
         if len(s) > 0:
             for obj in s:
                 return self._objects[obj['label']]

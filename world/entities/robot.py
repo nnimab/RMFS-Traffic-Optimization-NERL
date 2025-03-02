@@ -142,7 +142,15 @@ class Robot(Object):
     def getNearestRobotConflictCandidate(self, next_step_coords, search_area):
         neighbor_candidates = []
 
-        neighbors = self.robot_manager.warehouse.landscape.getNeighborObjectWithRadius(round(self.pos_x), round(self.pos_y), search_area)
+        # 安全檢查：確保坐標在有效範圍內
+        pos_x = round(self.pos_x)
+        pos_y = round(self.pos_y)
+        warehouse_dimension = self.robot_manager.warehouse.DIMENSION
+        if pos_x < 0 or pos_x >= warehouse_dimension or pos_y < 0 or pos_y >= warehouse_dimension:
+            # 如果坐標超出範圍，返回None避免潛在錯誤
+            return None
+
+        neighbors = self.robot_manager.warehouse.landscape.getNeighborObjectWithRadius(pos_x, pos_y, search_area)
         if neighbors:
             for neighbor in neighbors:
                 neighbor_robot = self.robot_manager.getRobotByName(neighbor['label'])
@@ -153,8 +161,7 @@ class Robot(Object):
                 #     continue
 
                 neighbor_next_step_coords = self._calculateNextBlocks(round(neighbor['x']), round(neighbor['y']),
-                                                                        neighbor['heading'], search_area,
-                                                                        include_self=True)
+                                                                    neighbor['heading'], search_area)
                 meeting_coordinate = self._getIntersectionBlock(next_step_coords, neighbor_next_step_coords)
                 if meeting_coordinate and self.isCollisionCandidate(neighbor):
                     neighbor_candidates.append((neighbor, meeting_coordinate))
