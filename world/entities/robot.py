@@ -46,6 +46,7 @@ class Robot(Object):
         self.current_intersection_stop_and_go = 0
         self.current_intersection_start_time = None
         self.current_intersection_finish_time = None
+        self.intersection_wait_time = {}  # 記錄在每個路口等待的時間
 
     def setRobotManager(self, robot_manager):
         self.robot_manager = robot_manager
@@ -434,9 +435,37 @@ class Robot(Object):
     def pathBlockedByIntersection(self, next_step_coordinates):
         for next_x, next_y in next_step_coordinates:
             intersection = self.robot_manager.warehouse.intersection_manager.getIntersectionByCoordinate(next_x, next_y)
-            if (intersection and self.closeEnough(intersection.coordinate, 1)
-                    and not intersection.isAllowedToMove(self.heading)):
-                return True
+            if intersection:
+                # Print intersection and robot information for debugging
+                print(f"Robot {self.id} at ({self.pos_x}, {self.pos_y}) heading {self.heading} checking intersection {intersection.id} at ({next_x}, {next_y})")
+                print(f"Intersection allowed direction: {intersection.allowed_direction}")
+                
+                # Use stricter distance check
+                is_close = self.closeEnough(intersection.coordinate, 0.8)
+                
+                # Check if movement is allowed
+                can_move = intersection.isAllowedToMove(self.heading)
+                
+                print(f"Is close to intersection: {is_close}, Can move: {can_move}")
+                
+                if is_close and not can_move:
+                    # Check if waited too long (over 30 time units)
+                    if hasattr(self, 'intersection_wait_time') and self.intersection_wait_time.get(intersection.id, 0) > 30:
+                        print(f"Robot {self.id} waited too long at intersection {intersection.id}, forcing passage")
+                        # Force passage (emergency use)
+                        return False
+                    
+                    # Update wait time
+                    if not hasattr(self, 'intersection_wait_time'):
+                        self.intersection_wait_time = {}
+                    self.intersection_wait_time[intersection.id] = self.intersection_wait_time.get(intersection.id, 0) + 1
+                    
+                    return True
+                
+                # Reset wait time if can move or not close enough
+                if hasattr(self, 'intersection_wait_time') and intersection.id in self.intersection_wait_time:
+                    self.intersection_wait_time[intersection.id] = 0
+        
         return False
 
     def pathBlockedByRobot(self, next_step_coordinates):
@@ -739,7 +768,13 @@ class Robot(Object):
 
     def closeEnough(self, p: NetLogoCoordinate, precision=0.25):
         self_coord = NetLogoCoordinate(self.pos_x, self.pos_y)
-        return self._calculateTwoPoint(self_coord, p) < precision
+        distance = self._calculateTwoPoint(self_coord, p)
+        
+        # Add extra debug info when checking intersections
+        if precision > 0.5:  # Usually intersection checks use larger precision values
+            print(f"Distance check - Robot {self.id} position ({self.pos_x}, {self.pos_y}) to ({p.x}, {p.y}): {distance}, precision threshold: {precision}")
+        
+        return distance < precision
 
     @staticmethod
     def ensureCoordinate(number):
