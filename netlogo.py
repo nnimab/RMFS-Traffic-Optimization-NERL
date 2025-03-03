@@ -127,7 +127,7 @@ def set_time_based_controller(horizontal_time=70, vertical_time=30):
 
 
 # 設置隊列基控制器的快捷函數
-def set_queue_based_controller(min_green_time=10, bias_factor=1.5):
+def set_queue_based_controller(min_green_time=30, bias_factor=1.5):
     """
     設置隊列基控制器
     
