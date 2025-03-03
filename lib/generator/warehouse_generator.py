@@ -68,12 +68,12 @@ def draw_layout_from_generated_file(warehouse: Warehouse):
     # Config Orders
     assign_skus_to_pods(warehouse.pod_manager)
     config_orders(
-        initial_order=20, 
-        total_requested_item=500, # Number of SKU in warehouse
+        initial_order=20, #原本是20
+        total_requested_item=500, # Number of SKU in warehouse #原本是500
         items_orders_class_configuration={"A": 0.6, "B": 0.3, "C": 0.1}, # Item class configuration in warehouse
         quantity_range=[1, 12], # Quantity range of number of SKU in each order
-        order_cycle_time=100,  # Number of order per hour
-        order_period_time=2,
+        order_cycle_time=100,  # Number of order per hour #原本是100
+        order_period_time=5, #原本是2
         order_start_arrival_time=5, # Start time of order arrival  
         date=1,
         sim_ver=1,        
@@ -372,7 +372,6 @@ def assign_skus_to_pods(pod_manager):
                       items_pods_inventory_levels={"A": 0.4, "B": 0.5, "C": 0.6},
                       items_warehouse_inventory_levels={"A": 0.4, "B": 0.5, "C": 0.6},
                       items_pods_class_conf={"A": 0.6, "B": 0.3, "C": 0.1},
-                      pod_manager=pod_manager,
                       dev_mode=False)
         assign_skus_to_pods_from_file(pod_manager)
 

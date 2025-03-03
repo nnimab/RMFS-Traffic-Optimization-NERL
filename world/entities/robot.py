@@ -22,6 +22,8 @@ class Robot(Object):
     GRAVITY = 10
     FRICTION = 0.3
     INERTIA = 0.4
+    # 調適級別: 0 = 無調適訊息, 1 = 僅顯示重要訊息, 2 = 顯示所有詳細訊息
+    DEBUG_LEVEL = 1
 
     def __init__(self, id: int, x: int, y: int):
         super().__init__(id, 'robot', x, y)
@@ -437,8 +439,9 @@ class Robot(Object):
             intersection = self.robot_manager.warehouse.intersection_manager.getIntersectionByCoordinate(next_x, next_y)
             if intersection:
                 # Print intersection and robot information for debugging
-                print(f"Robot {self.id} at ({self.pos_x}, {self.pos_y}) heading {self.heading} checking intersection {intersection.id} at ({next_x}, {next_y})")
-                print(f"Intersection allowed direction: {intersection.allowed_direction}")
+                if Robot.DEBUG_LEVEL > 1:
+                    print(f"Robot {self.id} at ({self.pos_x}, {self.pos_y}) heading {self.heading} checking intersection {intersection.id} at ({next_x}, {next_y})")
+                    print(f"Intersection allowed direction: {intersection.allowed_direction}")
                 
                 # Use stricter distance check
                 is_close = self.closeEnough(intersection.coordinate, 0.8)
@@ -446,12 +449,14 @@ class Robot(Object):
                 # Check if movement is allowed
                 can_move = intersection.isAllowedToMove(self.heading)
                 
-                print(f"Is close to intersection: {is_close}, Can move: {can_move}")
+                if Robot.DEBUG_LEVEL > 1:
+                    print(f"Is close to intersection: {is_close}, Can move: {can_move}")
                 
                 if is_close and not can_move:
                     # Check if waited too long (over 30 time units)
                     if hasattr(self, 'intersection_wait_time') and self.intersection_wait_time.get(intersection.id, 0) > 30:
-                        print(f"Robot {self.id} waited too long at intersection {intersection.id}, forcing passage")
+                        if Robot.DEBUG_LEVEL > 0:
+                            print(f"Robot {self.id} waited too long at intersection {intersection.id}, forcing passage")
                         # Force passage (emergency use)
                         return False
                     
@@ -771,19 +776,20 @@ class Robot(Object):
         distance = self._calculateTwoPoint(self_coord, p)
         
         # Add extra debug info when checking intersections
-        if precision > 0.5:  # Usually intersection checks use larger precision values
+        if Robot.DEBUG_LEVEL > 1 and precision > 0.5:  # Usually intersection checks use larger precision values
             print(f"Distance check - Robot {self.id} position ({self.pos_x}, {self.pos_y}) to ({p.x}, {p.y}): {distance}, precision threshold: {precision}")
         
         return distance < precision
 
     @staticmethod
     def ensureCoordinate(number):
-        if isinstance(number, int):
-            print(f"{number} is an integer.")
-        elif isinstance(number, float) and number.is_integer():
-            print(f"{number} is a float with 0 precision.")
-        else:
-            print(f"{number} is not a valid integer or float with 0 precision.")
+        if Robot.DEBUG_LEVEL > 1:
+            if isinstance(number, int):
+                print(f"{number} is an integer.")
+            elif isinstance(number, float) and number.is_integer():
+                print(f"{number} is a float with 0 precision.")
+            else:
+                print(f"{number} is not a valid integer or float with 0 precision.")
 
     @staticmethod
     def getDecimal(number):

@@ -16,6 +16,7 @@ globals [
   _stop
   total_turning
   current_controller
+  current_tick
 ]
 
 to setup
@@ -78,6 +79,7 @@ to go
   set total_energy item 1 result
   set _stop item 3 result
   set total_turning item 4 result
+  set current_tick item 5 result
   set average_total_energy total_energy / robotCount
 end
 
@@ -125,6 +127,30 @@ to set-dqn
     show "設置DQN控制器失敗"
   ]
 end
+
+to set-dqn-with-model
+  (py:run
+    "import netlogo"
+    (word "result = netlogo.set_dqn_controller(" exploration-rate ", " model-tick ")"))
+  let result py:runresult "result"
+  ifelse result [
+    set current_controller "DQN(loaded)"
+    show (word "已設置DQN控制器並加載模型(tick " model-tick ")")
+  ] [
+    show "設置DQN控制器或加載模型失敗"
+  ]
+end
+
+to list-models
+  (py:run
+    "import netlogo"
+    "models = netlogo.list_available_models()")
+  let models py:runresult "models"
+  show "可用模型列表:"
+  foreach models [
+    model -> show model
+  ]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 15
@@ -154,44 +180,44 @@ ticks
 15.0
 
 BUTTON
-795
+775
+305
+858
+338
+setup
+setup
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+910
 375
-878
+974
+409
+go
+go
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+775
+375
+872
 408
-setup
-setup
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-930
-445
-994
-479
-go
-go
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-795
-445
-892
-478
 go-forever
 go
 T
@@ -260,10 +286,10 @@ total_turning
 14
 
 BUTTON
-929
-375
-1011
-408
+909
+305
+991
+338
 Setup Py
 setup-py
 NIL
@@ -328,10 +354,10 @@ NIL
 1
 
 MONITOR
-1260
-398
-1425
-455
+775
+10
+940
+67
 當前控制器
 current_controller
 17
@@ -412,6 +438,66 @@ exploration-rate
 1
 NIL
 HORIZONTAL
+
+SLIDER
+880
+234
+1052
+267
+model-tick
+model-tick
+0
+50000
+5000.0
+5000
+1
+NIL
+HORIZONTAL
+
+BUTTON
+1061
+191
+1141
+224
+查看模型
+list-models
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+1061
+234
+1194
+267
+DQN(加載模型)
+set-dqn-with-model
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+MONITOR
+1085
+10
+1220
+66
+Current Tick
+current_tick
+4
+1
+14
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -852,9 +938,6 @@ Line -16777216 false 77 130 107 112
 Rectangle -16777216 false false 107 149 192 210
 Rectangle -1 true false 180 9 203 17
 Rectangle -1 true false 97 9 120 17
-Polygon -13840069 true false 135 15 135 15 120 75 180 15 180 90 120 75 135 15 180 15
-Polygon -13840069 true false 90 30 90 45 75 60 75 120 225 105 225 60 195 30 90 30 90 30
-Rectangle -13840069 true false 120 150 180 210
 
 turtle-occupied
 true

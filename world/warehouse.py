@@ -150,33 +150,48 @@ class Warehouse:
             return self.finishReplenishmentTask(job)
     
     def finishPickingTask(self, job: Job):
+        # 根據工作中的貨架座標獲取貨架對象
         pod: Pod = self.pod_manager.getPodsByCoordinate(job.pod_coordinate.x, job.pod_coordinate.y)
+        # 初始化需要補貨的SKU列表
         sku_need_replenished = []
+        # 遍歷工作中的所有訂單項目
         for order_id, sku, quantity in job.orders:
+            # 根據訂單ID獲取訂單對象
             order: Order = self.order_manager.getOrderById(order_id)
+            # 更新訂單中已配送的商品數量
             order.deliverQuantity(sku, quantity)
-            print("order, sku, quantity :" ,order_id, sku, quantity)
+            # 輸出訂單處理信息
+            print("order, sku, quantity :" ,order_id, sku, quantity)  # 調試輸出：顯示當前處理的訂單、SKU和數量
 
-            pod.pickSKU(sku, quantity)
+            # 從貨架上取出指定數量的SKU
+            pod.pickSKU(sku, quantity)  # 從貨架上減少相應SKU的數量
 
-            # Check for SKU Replenishment
-            # sku is sku_id (String)
-            self.pod_manager.reduceSKUData(sku, quantity)
-            sku, replenished_status = self.pod_manager.isSKUNeedReplenishment(sku)
+            # 檢查SKU是否需要補貨
+            # sku是SKU的唯一標識符(字符串)
+            # 減少全局SKU數據中的庫存量
+            self.pod_manager.reduceSKUData(sku, quantity)  # 更新全局SKU庫存數據
+            # 檢查SKU是否需要補貨
+            sku, replenished_status = self.pod_manager.isSKUNeedReplenishment(sku)  # 檢查SKU是否達到補貨閾值
 
-            # SKU Replenished Triggered
-            if(replenished_status == True): sku_need_replenished.append(sku)
+            # 如果SKU需要補貨，將其添加到需補貨列表
+            if(replenished_status == True): sku_need_replenished.append(sku)  # 將需要補貨的SKU加入列表
     
-            file_path = PARENT_DIRECTORY + "/data/input/assign_order.csv"
-            assign_order_df = pd.read_csv(file_path)
-            assign_order_df.loc[((assign_order_df['order_id'] == order.id) & (assign_order_df['item_id'] == sku)), 'status'] = 1
-            assign_order_df.to_csv(file_path, index=False)
+            # 更新訂單分配狀態
+            file_path = PARENT_DIRECTORY + "/data/input/assign_order.csv"  # 訂單分配文件路徑
+            assign_order_df = pd.read_csv(file_path)  # 讀取訂單分配數據
+            # 將對應訂單項的狀態更新為已完成(1)
+            assign_order_df.loc[((assign_order_df['order_id'] == order.id) & (assign_order_df['item_id'] == sku)), 'status'] = 1  # 更新狀態為已完成
+            assign_order_df.to_csv(file_path, index=False)  # 保存更新後的訂單分配數據
             
-            if order.isOrderCompleted():
-                self.order_manager.finishOrder(order_id, int(self._tick))
-                station = self.station_manager.getStationById(order.station_id)
-                station.removeOrder(order_id,order)
-                self.insertFinishedOrderToCSV(order)
+            # 檢查訂單是否已全部完成
+            if order.isOrderCompleted():  # 如果訂單中所有項目都已配送完成
+                # 完成訂單並記錄完成時間
+                self.order_manager.finishOrder(order_id, int(self._tick))  # 更新訂單完成狀態和時間
+                # 從工作站移除已完成的訂單
+                station = self.station_manager.getStationById(order.station_id)  # 獲取訂單所在工作站
+                station.removeOrder(order_id,order)  # 從工作站移除已完成訂單
+                # 將已完成的訂單信息寫入CSV文件
+                self.insertFinishedOrderToCSV(order)  # 記錄已完成訂單的詳細信息
 
         # # TRACY
         # # Get pod that have SKU that need to be replenished
@@ -187,12 +202,16 @@ class Warehouse:
         # # Get the pod that will be Replenished
         # pod_will_be_replenished = self.pod_manager.getPodByNumber(pod_id_will_be_replenished)
 
-        # Replenishment baseline
+        # 完成任務並檢查是否需要補貨
         job.is_finished = True
+        
+        # 如果有任何SKU需要補貨就返回True
         if len(sku_need_replenished) > 0:
             return True
+            
+        # 檢查整個貨架是否需要補貨
         need_replenish_pod = pod.isNeedReplenishment()
-        print(f"reple ga yaaa {need_replenish_pod}")
+        print(f"Pod replenishment status: {need_replenish_pod}")
         return need_replenish_pod
     
     def finishReplenishmentTask(self, job: Job):
