@@ -30,6 +30,14 @@ to setup
   ask patches [
     set pcolor 8
   ]
+
+  ;; 標記重要路口位置 - 使用粉紅色突出顯示主要路口
+  ask patch 15 15 [
+    set pcolor 135  ;; 設置粉紅色
+    ask neighbors [set pcolor 135]  ;; 為了更明顯，也將相鄰的patch設置為相同顏色
+    ask patch-at 0 0 [set plabel "主要交叉路口"]  ;; 添加標籤
+  ]
+
   foreach result [
     [ x ] ->
     let id item 1 (item 0 x)
@@ -403,7 +411,7 @@ min-green-time
 min-green-time
 1
 30
-11.0
+1.0
 1
 1
 NIL
@@ -492,7 +500,7 @@ MONITOR
 1085
 10
 1220
-66
+67
 Current Tick
 current_tick
 4

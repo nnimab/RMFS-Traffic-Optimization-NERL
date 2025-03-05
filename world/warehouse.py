@@ -46,7 +46,7 @@ class Warehouse:
         self.pod_manager = PodManager(self)
         self.station_manager = StationManager(self)
         self.next_process_tick = 0
-        self.update_intersection_using_RL = False
+        self.update_intersection_using_RL = True
         self.zoning = False
         self.graph = DirectedGraph()
         self.graph_pod = DirectedGraph()

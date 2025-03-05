@@ -57,10 +57,19 @@ class IntersectionManager:
         controller = self.controllers[self.current_controller_type]
         
         for intersection in self.intersections:
-            direction = controller.get_direction(intersection, tick, self.warehouse)
-            
-            if direction != intersection.allowed_direction:
-                self.updateAllowedDirection(intersection.id, direction, tick)
+            # 對於隊列基控制器，只在主要交叉路口（15, 15）應用
+            if self.current_controller_type == "queue_based":
+                # 檢查是否為主要交叉路口（坐標為15,15）
+                if intersection.pos_x == 15 and intersection.pos_y == 15:
+                    direction = controller.get_direction(intersection, tick, self.warehouse)
+                    if direction != intersection.allowed_direction:
+                        print(f"主要交叉路口（15,15）方向變更: {intersection.allowed_direction} -> {direction}")
+                        self.updateAllowedDirection(intersection.id, direction, tick)
+            else:
+                # 其他類型的控制器應用於所有交叉路口
+                direction = controller.get_direction(intersection, tick, self.warehouse)
+                if direction != intersection.allowed_direction:
+                    self.updateAllowedDirection(intersection.id, direction, tick)
     
     def getIntersectionByCoordinate(self, x, y):
         return self.coordinate_to_intersection.get((x, y), None)
@@ -259,8 +268,25 @@ class IntersectionManager:
 
     def findIntersectionByCoordinate(self, x: int, y: int) -> Optional[str]:
         for intersection in self.intersections:
+            # 檢查坐標是否在接近路徑坐標列表中
             if (x, y) in intersection.approaching_path_coordinates:
                 return intersection.id
+            
+            # 如果不在接近路徑中，檢查是否在交叉路口的近距離範圍內
+            intersection_x = intersection.coordinate.x
+            intersection_y = intersection.coordinate.y
+            distance = abs(x - intersection_x) + abs(y - intersection_y)  # 曼哈頓距離
+            
+            # 如果交叉路口是主要交叉路口(15,15)，使用更大的識別半徑(3個單位)
+            if intersection_x == 15 and intersection_y == 15:
+                if distance <= 3:
+                    print(f"Main intersection detection: Robot at ({x}, {y}) is near main intersection ({intersection_x}, {intersection_y}), distance: {distance}")
+                    return intersection.id
+            # 一般交叉路口使用2個單位的識別半徑
+            elif distance <= 2:
+                print(f"Intersection detection: Robot at ({x}, {y}) is near intersection ({intersection_x}, {intersection_y})")
+                return intersection.id
+                    
         return None
 
     def findIntersectionById(self, intersection_id):

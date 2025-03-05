@@ -17,7 +17,7 @@ from lib.constant import *
 pods_path = os.path.join(PARENT_DIRECTORY, 'data/output/pods.csv')
 
 def init_robots(warehouse: Warehouse):
-    num_robot = 20 # Number of robots
+    num_robot = 30 # Number of robots
     
     robots = []
     x_range = (5,43)
