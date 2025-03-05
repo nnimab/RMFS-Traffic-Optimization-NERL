@@ -31,11 +31,46 @@ to setup
     set pcolor 8
   ]
 
-  ;; 標記重要路口位置 - 使用粉紅色突出顯示主要路口
+  ;; 獲取路口信息
+  (py:run
+    "import netlogo"
+    "intersections = netlogo.get_all_intersections()")
+  let intersections py:runresult "intersections"
+
+  ;; 標記所有路口 - 根據路口的實際ID標記
+
+  ;; 首先標記主要路口 - 使用粉紅色突出顯示
   ask patch 15 15 [
     set pcolor 135  ;; 設置粉紅色
     ask neighbors [set pcolor 135]  ;; 為了更明顯，也將相鄰的patch設置為相同顏色
-    ask patch-at 0 0 [set plabel "主要交叉路口"]  ;; 添加標籤
+    let main-id 0
+    foreach intersections [ coords ->
+      let x item 0 coords
+      let y item 1 coords
+      let id item 2 coords
+      if (x = 15 and y = 15) [
+        set main-id id
+      ]
+    ]
+    set plabel (word main-id)  ;; 添加路口實際ID
+    set plabel-color white  ;; 設置標籤顏色為白色，增加可讀性
+  ]
+
+  ;; 標記其他路口 - 使用藍綠色，顯示實際ID
+  foreach intersections [ coords ->
+    let x item 0 coords
+    let y item 1 coords
+    let id item 2 coords
+
+    ;; 跳過主要路口(15,15)，因為已經標記過了
+    if not (x = 15 and y = 15) [
+      ask patch x y [
+        set pcolor 85  ;; 設置藍綠色
+        ask neighbors [set pcolor 85]  ;; 為了更明顯，也將相鄰的patch設置為相同顏色
+        set plabel (word id)  ;; 添加路口實際ID
+        set plabel-color white  ;; 設置標籤顏色為白色，增加可讀性
+      ]
+    ]
   ]
 
   foreach result [
@@ -159,6 +194,19 @@ to list-models
     model -> show model
   ]
 end
+
+to generate-report
+  (py:run
+    "import netlogo"
+    "result = netlogo.generate_report()")
+  let result py:runresult "result"
+  ifelse result [
+    show "性能報告生成成功！"
+  ] [
+    show "性能報告生成失敗，請查看控制台日誌。"
+  ]
+end
+
 @#$#@#$#@
 GRAPHICS-WINDOW
 15
@@ -506,6 +554,23 @@ current_tick
 4
 1
 14
+
+BUTTON
+775
+440
+974
+473
+生成性能報告
+generate-report
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?

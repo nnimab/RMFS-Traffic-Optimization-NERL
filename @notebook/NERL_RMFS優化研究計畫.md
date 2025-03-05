@@ -157,6 +157,23 @@ class DQNController(TrafficController):
         reward = -(energy_since_last + 0.5 * stops_since_last)
         
         return reward
+
+
+後續建議
+參數調優：
+控制器的 min_green_time、bias_factor 和 max_wait_threshold 參數
+DQN的學習率、折扣因子和探索率
+獎勵函數的各項權重
+模型評估：
+與基於隊列的控制器進行對比測試
+評估不同交通條件下的性能
+進階功能：
+實現優先權調整
+增加更多特徵如任務緊急程度
+考慮相鄰交叉路口之間的協調
+
+
+        
 ```
 
 ## NERL實現框架

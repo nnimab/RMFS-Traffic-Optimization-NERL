@@ -43,7 +43,7 @@ class IntersectionManager:
             try:
                 self.controllers[controller_type] = TrafficControllerFactory.create_controller(controller_type, **kwargs)
             except (ImportError, ValueError) as e:
-                print(f"無法創建控制器 {controller_type}: {e}")
+                print(f"Failed to create controller {controller_type}: {e}")
                 return False
         
         self.current_controller_type = controller_type
@@ -51,26 +51,33 @@ class IntersectionManager:
     
     def update_traffic_using_controller(self, tick):
         if self.current_controller_type is None or self.current_controller_type not in self.controllers:
-            print("未設置有效的交通控制器")
+            print("No valid traffic controller set")
             return
         
         controller = self.controllers[self.current_controller_type]
         
         for intersection in self.intersections:
-            # 對於隊列基控制器，只在主要交叉路口（15, 15）應用
-            if self.current_controller_type == "queue_based":
-                # 檢查是否為主要交叉路口（坐標為15,15）
+            # 獲取控制器決定的方向
+            direction = controller.get_direction(intersection, tick, self.warehouse)
+            
+            # 更新方向如果需要
+            if direction != intersection.allowed_direction:
+                # 對於主要交叉路口(15,15)保留特殊的日誌輸出
                 if intersection.pos_x == 15 and intersection.pos_y == 15:
-                    direction = controller.get_direction(intersection, tick, self.warehouse)
-                    if direction != intersection.allowed_direction:
-                        print(f"主要交叉路口（15,15）方向變更: {intersection.allowed_direction} -> {direction}")
-                        self.updateAllowedDirection(intersection.id, direction, tick)
-            else:
-                # 其他類型的控制器應用於所有交叉路口
-                direction = controller.get_direction(intersection, tick, self.warehouse)
-                if direction != intersection.allowed_direction:
-                    self.updateAllowedDirection(intersection.id, direction, tick)
-    
+                    print(f"Main intersection (15,15) direction change: {intersection.allowed_direction} -> {direction}")
+                else:
+                    print(f"Intersection {intersection.id} at ({intersection.pos_x}, {intersection.pos_y}) direction change: {intersection.allowed_direction} -> {direction}")
+                self.updateAllowedDirection(intersection.id, direction, tick)
+            
+            # 如果是DQN控制器，對其進行訓練
+            if self.current_controller_type == "dqn":
+                try:
+                    # 確保控制器有train方法
+                    if hasattr(controller, 'train') and callable(controller.train):
+                        controller.train(intersection, tick, self.warehouse)
+                except Exception as e:
+                    print(f"Error during DQN training: {e}")
+                    
     def getIntersectionByCoordinate(self, x, y):
         return self.coordinate_to_intersection.get((x, y), None)
 
@@ -149,6 +156,7 @@ class IntersectionManager:
         if self.current_controller_type == "dqn":
             self.update_traffic_using_controller(tick)
         else:
+            # 如果不是DQN控制器，保持原代碼邏輯
             pass
 
     def updateModelAfterExecution(self, tick):
@@ -284,7 +292,7 @@ class IntersectionManager:
                     return intersection.id
             # 一般交叉路口使用2個單位的識別半徑
             elif distance <= 2:
-                print(f"Intersection detection: Robot at ({x}, {y}) is near intersection ({intersection_x}, {intersection_y})")
+                print(f"Intersection detection: Robot at ({x}, {y}) is near intersection ({intersection_x}, {intersection_y}), ID: {intersection.id}")
                 return intersection.id
                     
         return None

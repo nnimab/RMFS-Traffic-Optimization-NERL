@@ -1,0 +1,23 @@
+{
+  "ticks": [
+    10.050000000000013
+  ],
+  "total_energy_consumption": [
+    0.081229375
+  ],
+  "avg_robot_utilization": [
+    0.15091210613598693
+  ],
+  "avg_intersection_traffic": [
+    0.2232137574212377
+  ],
+  "avg_intersection_wait_time": [
+    4.216071428571436
+  ],
+  "completed_orders_count": [
+    0
+  ],
+  "avg_intersection_congestion": [
+    0.4393939393939394
+  ]
+}

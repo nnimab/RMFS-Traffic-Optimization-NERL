@@ -17,11 +17,16 @@ class Robot(Object):
     # movement related
     MAXIMUM_SPEED = 1.5
     # energy consumption related
+   # 機器人質量
     MASS = 1
+    # 負載質量
     LOAD_MASS = 0
+    # 重力加速度
     GRAVITY = 10
+    # 摩擦係數
     FRICTION = 0.3
-    INERTIA = 0.4
+    # 慣性係數
+    INERTIA = 0.4 
     # 調適級別: 0 = 無調適訊息, 1 = 僅顯示重要訊息, 2 = 顯示所有詳細訊息
     DEBUG_LEVEL = 1
 
@@ -49,6 +54,10 @@ class Robot(Object):
         self.current_intersection_start_time = None
         self.current_intersection_finish_time = None
         self.intersection_wait_time = {}  # 記錄在每個路口等待的時間
+        
+        # 新增屬性：用於計算機器人利用率
+        self.total_active_time = 0  # 機器人處於非閒置狀態的總時間
+        self.last_state_change_time = 0  # 上次狀態變化的時間點
 
     def setRobotManager(self, robot_manager):
         self.robot_manager = robot_manager
@@ -115,14 +124,14 @@ class Robot(Object):
     def advanceState(self):
         if self.current_state == "taking_pod":
             self.taking_pod_delay += self.delay_per_task
-            self.current_state = "delivering_pod"
+            self.updateState("delivering_pod", self.latest_tick)
         elif self.current_state == "delivering_pod":
-            self.current_state = "station_processing"
+            self.updateState("station_processing", self.latest_tick)
         elif self.current_state == "station_processing":
-            self.current_state = "returning_pod"
+            self.updateState("returning_pod", self.latest_tick)
         elif self.current_state == "returning_pod":
             self.taking_pod_delay += self.delay_per_task
-            self.current_state = "idle"
+            self.updateState("idle", self.latest_tick)
 
     def decideCollision(self, collision_block, o, collide_distance):
         will_collide = False
@@ -642,6 +651,14 @@ class Robot(Object):
 
         intersection: Intersection = self.robot_manager.warehouse.intersection_manager.findIntersectionById(
             self.current_intersection_id)
+        
+        # 計算等待時間
+        waiting_time = 0
+        if self.current_intersection_start_time is not None:
+            waiting_time = self.current_intersection_finish_time - self.current_intersection_start_time
+        
+        # 記錄機器人通過交叉口
+        intersection.recordRobotPass(self, self.robot_manager.warehouse._tick, waiting_time)
 
         if intersection.shouldSaveRobotInfo():
             self.intersectionToCsv(intersection)
@@ -680,15 +697,15 @@ class Robot(Object):
 
     def assignJobAndSetToTakePod(self, job: Job):
         self.job = job
-
-        self.setMoveToTakePod()
+        self.updateState("taking_pod", self.latest_tick)
+        # 作業類型一：抓取pod
+        self.job.job_state = "take_pod"
 
     def assignJobAndSetToStation(self, job: Job):
         self.job = job
-        self.current_state = "taking_pod"
-        self.route_stop_points = None
-        self.advanceStateIfNeeded()
-        self.taking_pod_delay = 0
+        self.updateState("taking_pod", self.latest_tick)
+        # 作業類型一：抓取pod
+        self.job.job_state = "take_pod"
 
     def setMoveToTakePod(self):
         self.setMove(self.job.pod_coordinate, graph=self.robot_manager.warehouse.graph, need_neutralize_robot=False)
@@ -850,3 +867,23 @@ class Robot(Object):
         for p in blocks_1:
             if p in blocks_2:
                 return p
+
+    def updateState(self, new_state, current_tick):
+        """
+        更新機器人狀態並記錄活動時間
+        """
+        # 如果從非閒置變為閒置，計算活動時間
+        if self.current_state != 'idle' and new_state == 'idle':
+            if self.last_state_change_time > 0:  # 確保有有效的上次狀態變化時間
+                self.total_active_time += current_tick - self.last_state_change_time
+                if self.DEBUG_LEVEL >= 2:
+                    print(f"Robot {self.robotName()} active time updated: +{current_tick - self.last_state_change_time} ticks, total: {self.total_active_time} ticks")
+        
+        # 如果從閒置變為非閒置，記錄狀態變化時間
+        if self.current_state == 'idle' and new_state != 'idle':
+            self.last_state_change_time = current_tick
+            if self.DEBUG_LEVEL >= 2:
+                print(f"Robot {self.robotName()} became active at tick {current_tick}")
+        
+        # 更新當前狀態
+        self.current_state = new_state

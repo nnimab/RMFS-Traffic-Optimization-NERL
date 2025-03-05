@@ -50,6 +50,7 @@ class Warehouse:
         self.zoning = False
         self.graph = DirectedGraph()
         self.graph_pod = DirectedGraph()
+        self.current_controller = "none"  # 存儲當前使用的控制器類型
 
     def initWarehouse(self):
         self.robot_manager.initRobotManager()
@@ -406,4 +407,5 @@ class Warehouse:
             # 啟用交通控制
             self.update_intersection_using_RL = True
             print(f"交通控制器已設置為: {controller_type}")
+            self.current_controller = controller_type
         return success

@@ -23,6 +23,15 @@ class Intersection(Object):
         self.total_waiting_time_vertical = 0
         self.total_robots_passed_horizontal = 0
         self.total_robots_passed_vertical = 0
+        
+        # 新增屬性：用於計算平均交叉口流量
+        self.total_robots_passed = 0  # 已通過的機器人總數
+        self.simulation_start_tick = 0  # 模擬開始的tick
+        self.robot_pass_records = []  # 記錄每個機器人通過的時間，用於計算單位時間的流量
+        
+        # 新增屬性：用於更精確計算平均等待時間
+        self.total_waiting_time = 0  # 所有機器人在交叉口等待的總時間
+        self.waiting_time_records = []  # 記錄每個機器人的等待時間
 
     def setIntersectionManager(self, intersection_manager):
         self.intersection_manager = intersection_manager
@@ -253,3 +262,61 @@ class Intersection(Object):
 
     def setRLModelName(self, model_name):
         self.RL_model_name = f"IntersectionModel_{model_name}"
+
+    def recordRobotPass(self, robot, current_tick, waiting_time=0):
+        """
+        記錄機器人通過交叉口的信息，用於計算流量和等待時間
+        
+        Args:
+            robot: 通過的機器人
+            current_tick: 當前的模擬時間
+            waiting_time: 機器人在交叉口等待的時間
+        """
+        # 如果是第一個記錄，設置模擬開始時間
+        if self.simulation_start_tick == 0:
+            self.simulation_start_tick = current_tick
+        
+        # 記錄機器人通過
+        self.total_robots_passed += 1
+        self.robot_pass_records.append((robot.robotName(), current_tick))
+        
+        # 記錄等待時間
+        self.total_waiting_time += waiting_time
+        if waiting_time > 0:
+            self.waiting_time_records.append((robot.robotName(), waiting_time))
+        
+        # 如果有調試輸出
+        if robot.DEBUG_LEVEL >= 2:
+            print(f"Robot {robot.robotName()} passed intersection {self.id} at tick {current_tick} with waiting time {waiting_time}")
+            
+    def getAverageTrafficRate(self, current_tick):
+        """
+        計算平均交叉口流量（單位時間內通過的機器人數量）
+        
+        Args:
+            current_tick: 當前的模擬時間
+            
+        Returns:
+            float: 平均交叉口流量（機器人/tick）
+        """
+        if self.simulation_start_tick == 0 or current_tick <= self.simulation_start_tick:
+            return 0
+            
+        # 計算從模擬開始到現在的時間
+        elapsed_time = current_tick - self.simulation_start_tick
+        
+        # 計算平均流量（機器人/tick）
+        return self.total_robots_passed / elapsed_time if elapsed_time > 0 else 0
+        
+    def getAverageWaitingTime(self):
+        """
+        計算平均等待時間
+        
+        Returns:
+            float: 平均等待時間（tick）
+        """
+        if not self.waiting_time_records:
+            return 0
+            
+        total_waiting_time = sum(wait_time for _, wait_time in self.waiting_time_records)
+        return total_waiting_time / len(self.waiting_time_records)

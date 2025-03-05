@@ -1,5 +1,0 @@
-robot_name,robot_state,robot_destination,intersection_start_time,intersection_finish_time,intersection_id,energy_consumption_intersection,queueing_robot
-robot-7,taking_pod,"(12,8)",7.950000000000008,8.55000000000001,intersection-25,0.0006693749999999998,0
-robot-18,taking_pod,"(13,23)",3.7499999999999987,9.300000000000011,intersection-49,0.0030756249999999985,1
-robot-16,taking_pod,"(20,2)",9.600000000000012,10.200000000000014,intersection-19,0.0006693749999999998,0
-robot-16,taking_pod,"(20,2)",13.500000000000021,14.400000000000023,intersection-7,0.0006093750000000001,0
