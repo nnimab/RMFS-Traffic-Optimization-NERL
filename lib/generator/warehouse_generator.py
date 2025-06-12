@@ -326,7 +326,7 @@ def create_storage_object(warehouse: Warehouse, x, y, row, totalRows, value, dat
         if obj_left_value == 11:
             warehouse.station_manager.createPickerStation(x, y, data)
         elif obj_right_value == 21:
-            warehouse.station_manager.createReplenishmentStation(x, y, data)
+            warehouse.station_manager.createReplenishmentStation(x, y, data, max_robots=3)
         warehouse.graph_pod.addEdge(obj_key, obj_above_coordinate, weight=weight)
         if value == 14:
             obj.heading = 270

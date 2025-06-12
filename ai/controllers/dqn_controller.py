@@ -122,6 +122,8 @@ class DQNController(TrafficController):
         Returns:
             str: 允許通行的方向 "Horizontal" 或 "Vertical"
         """
+        intersection_id = intersection.id
+        
         # 防鎖死機制檢查 - 計算每個方向的最大等待時間
         max_wait_time_h = 0
         max_wait_time_v = 0
@@ -139,25 +141,52 @@ class DQNController(TrafficController):
         # 如果有機器人等待時間超過閾值，優先讓其通行
         if max_wait_time_h > self.max_wait_threshold:
             print(f"Intersection {intersection.id}: Emergency direction change to Horizontal due to long wait time ({max_wait_time_h} ticks)")
+            # 即使是強制方向切換，也記錄狀態用於學習
+            if self.is_training:
+                state = self.get_state(intersection, tick, warehouse)
+                self.previous_states[intersection_id] = state
+                self.previous_actions[intersection_id] = 2  # 水平方向的動作編碼
             return "Horizontal"
         
         if max_wait_time_v > self.max_wait_threshold:
             print(f"Intersection {intersection.id}: Emergency direction change to Vertical due to long wait time ({max_wait_time_v} ticks)")
+            # 即使是強制方向切換，也記錄狀態用於學習
+            if self.is_training:
+                state = self.get_state(intersection, tick, warehouse)
+                self.previous_states[intersection_id] = state
+                self.previous_actions[intersection_id] = 1  # 垂直方向的動作編碼
             return "Vertical"
         
         # 檢查最小綠燈時間，避免頻繁切換
         if intersection.allowed_direction is not None and \
            intersection.durationSinceLastChange(tick) < self.min_green_time:
+            # 即使保持當前方向，也記錄狀態用於學習
+            if self.is_training:
+                state = self.get_state(intersection, tick, warehouse)
+                self.previous_states[intersection_id] = state
+                # 設置動作為保持當前方向
+                self.previous_actions[intersection_id] = 0  # 保持當前方向的動作編碼
             return intersection.allowed_direction
         
         # 如果兩個方向都沒有機器人，保持當前狀態
         if len(intersection.horizontal_robots) == 0 and len(intersection.vertical_robots) == 0:
+            # 沒有機器人的情況，不適合用於訓練，不記錄狀態
             return intersection.allowed_direction
         
         # 如果一個方向沒有機器人，另一個方向有，則選擇有機器人的方向
         if len(intersection.horizontal_robots) == 0:
+            # 記錄狀態和動作，因為這是有意義的決策
+            if self.is_training:
+                state = self.get_state(intersection, tick, warehouse)
+                self.previous_states[intersection_id] = state
+                self.previous_actions[intersection_id] = 1  # 垂直方向的動作編碼
             return "Vertical"
         if len(intersection.vertical_robots) == 0:
+            # 記錄狀態和動作，因為這是有意義的決策
+            if self.is_training:
+                state = self.get_state(intersection, tick, warehouse)
+                self.previous_states[intersection_id] = state
+                self.previous_actions[intersection_id] = 2  # 水平方向的動作編碼
             return "Horizontal"
         
         # 使用DQN選擇動作
@@ -165,7 +194,6 @@ class DQNController(TrafficController):
         
         # 保存當前狀態用於後續學習
         if self.is_training:
-            intersection_id = intersection.id
             self.previous_states[intersection_id] = state
             
             action = self.dqn.act(state)
@@ -251,6 +279,11 @@ class DQNController(TrafficController):
         
         # 只有在有先前狀態時才進行訓練
         if intersection_id not in self.previous_states or intersection_id not in self.previous_actions:
+            # 添加診斷日誌，每100個tick記錄一次
+            if tick % 100 == 0:
+                missing_states = intersection_id not in self.previous_states
+                missing_actions = intersection_id not in self.previous_actions
+                print(f"Debug: Intersection {intersection_id} - Missing states: {missing_states}, Missing actions: {missing_actions} at tick {tick}")
             return
         
         prev_state = self.previous_states[intersection_id]
@@ -278,11 +311,18 @@ class DQNController(TrafficController):
         
         # 每64個tick進行一次批次訓練
         if tick % 64 == 0:
-            self.dqn.replay(batch_size=32)
+            if len(self.dqn.memory) >= 32:
+                self.dqn.replay(batch_size=32)
+                if tick % 500 == 0:
+                    print(f"Debug: DQN trained at tick {tick}, memory size: {len(self.dqn.memory)}, epsilon: {self.dqn.epsilon:.4f}")
+            else:
+                if tick % 500 == 0:
+                    print(f"Debug: Insufficient memory for DQN training at tick {tick}, current size: {len(self.dqn.memory)}/32")
         
         # 每1000個tick更新目標網絡
         if tick % 1000 == 0:
             self.dqn.update_target_model()
+            print(f"Debug: Target network updated at tick {tick}")
             
         # 每5000個tick保存模型
         if tick % 5000 == 0 and tick > 0:

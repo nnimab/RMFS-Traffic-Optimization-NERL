@@ -2,6 +2,111 @@
 
 本文件包含項目的所有重要更改。
 
+## v0.5.0 (2024-03-12)
+
+### 主要更新：實現基於神經進化的強化學習控制器 (NERL Controller)
+
+* **版本描述**：此版本實現了基於神經進化強化學習的交通控制器，使用進化算法而非梯度下降來優化神經網絡策略。
+
+#### 新增功能
+* 新增 `ai/controllers/nerl_controller.py` 文件，實現 NEController 類
+* 實現可進化的神經網絡 EvolvableNetwork 類，用於進化算法優化
+* 使用與DQN控制器相同的狀態空間和獎勵設計，便於公平比較
+* 實現進化算法核心機制：
+  * 精英保留策略保存最佳個體
+  * 錦標賽選擇機制選擇父代
+  * 均勻交叉產生子代個體
+  * 高斯變異引入多樣性
+* 添加了基於進化間隔的訓練機制，定期更新族群
+* 支持模型保存和加載功能，便於持續訓練
+
+#### 技術細節
+* 族群規模為40個策略個體，每代保留8個精英個體
+* 交叉率0.7，變異率0.15，變異強度0.1
+* 每15個時間步執行一次進化操作
+* 保留最佳個體用於推理模式
+* 設計支持多核心CPU並行評估的架構
+
+#### 修改的文件
+* 新增: `ai/controllers/nerl_controller.py` - 實現NERL控制器和可進化神經網絡
+* 修改: `CHANGELOG.md` - 更新版本信息
+
+## v0.5.1 (2024-03-20)
+
+### 增強 NERL 控制器的 NetLogo 集成
+
+* **主要更新**:
+  - 添加 NetLogo 接口函數，實現與 NERL 控制器的完整集成。
+  - 支持從 NetLogo 設置、訓練和評估 NERL 控制器。
+
+* **新增功能**:
+  - 添加 `set_nerl_controller` 函數，支持從 NetLogo 設置 NERL 控制器。
+  - 添加 `set_nerl_training_mode` 函數，支持切換訓練/評估模式。
+  - 更新 `list_available_models` 函數，支持列出可用的 NERL 模型。
+  - 更新 `IntersectionManager.update_traffic_using_controller` 方法，支持 NERL 控制器的訓練機制。
+
+* **使用說明**:
+  - 設置控制器: `set-nerl-controller`
+  - 加載預訓練模型: `set-nerl-controller exploration-rate 0 load-model-tick 20000`
+  - 切換為評估模式: `set-nerl-training-mode false`
+  - 查看可用模型: `list-available-models "nerl"`
+
+* **修改的文件**:
+  - 更新 `netlogo.py`
+  - 更新 `world/managers/intersection_manager.py`
+  - 更新 `CHANGELOG.md`
+
+## v0.5.2 (2024-03-25)
+
+### 更新 README，添加 NERL 控制器使用說明
+
+* **主要更新**:
+  - 完善項目 README 文檔，添加 NERL 控制器的詳細使用說明和參數說明。
+  - 更新系統架構圖，加入 NERL 控制器。
+
+* **添加的內容**:
+  - NERL 控制器架構、參數和運行機制的詳細說明
+  - 在 NetLogo 中使用 NERL 控制器的具體步驟和命令示例
+  - 訓練模式和評估模式的切換說明
+  - 模型加載和查看說明
+
+* **參數說明**:
+  - 添加了 NERL 控制器的所有可配置參數的詳細說明，包括種群規模、交叉率、變異率等
+  - 解釋了進化間隔和進化機制
+
+* **修改的文件**:
+  - 更新 `README.md`
+  - 更新 `CHANGELOG.md`
+
+## v0.5.3 (2024-03-27)
+
+### 添加 NERL 控制器界面按鈕到 NetLogo
+
+* **主要更新**:
+  - 將 NERL 控制器的功能整合到 NetLogo 界面，添加了操作按鈕，提升使用體驗。
+  - 完善界面設計，使 NERL 控制器與其他控制器使用方式一致。
+
+* **新增功能**:
+  - 添加 `NERL控制器` 按鈕，用於快速設置基本 NERL 控制器
+  - 添加 `NERL(加載模型)` 按鈕，支持加載預訓練的 NERL 模型
+  - 添加 `NERL訓練模式開/關` 按鈕組，用於切換訓練和評估模式
+  - 添加 `list-models-by-type` 函數，支持按控制器類型查看可用模型
+
+* **界面設計**:
+  - NERL 控制器按鈕位置與 DQN 控制器按鈕相對應，保持界面一致性
+  - 訓練模式切換按鈕使用開/關設計，直觀明了
+  - 所有新增功能均與已有 Python 後端接口完美整合
+
+* **使用說明**:
+  - 點擊 `NERL控制器` 按鈕設置基本控制器
+  - 使用滑桿選擇模型 Tick，點擊 `NERL(加載模型)` 加載預訓練模型
+  - 點擊 `NERL訓練模式開/關` 切換控制器模式
+  - 在命令行使用 `list-models-by-type "nerl"` 查看可用的 NERL 模型
+
+* **修改的文件**:
+  - 更新 `rmfs.nlogo` - 添加界面按鈕和命令函數
+  - 更新 `CHANGELOG.md` - 記錄新版本更新內容
+
 ## v0.4.4 (2024-03-09)
 
 ### 修復：圖表標題和檔案名稱顯示正確的控制器名稱
@@ -960,3 +1065,161 @@
 * **修改文件**：
   - `netlogo.py`：添加了 `get_all_intersections()` 函數用於獲取路口信息。
   - `rmfs.nlogo`：修改了 `setup` 函數以支持從Python獲取路口位置並在界面上標記，並顯示其實際ID。
+
+## v0.5.4 (2024-04-10)
+
+### 修復：改進 NERL 控制器的評估機制
+
+* **問題描述**：
+  修復了 NERL 控制器長時間運行後仍會顯示 "No individuals evaluated yet, skipping evolution" 的問題。
+
+#### 問題原因
+* 在交通流量不足的情況下，個體可能長時間無法獲得評估機會
+* 當交叉路口沒有機器人或機器人不需要做出決策時，狀態和動作不會被記錄
+* 控制器缺乏適當的機制來處理長時間無法評估的情況
+
+#### 解決方案
+* 添加個體評估超時機制，如果當前個體超過500 ticks沒有被評估，則切換到下一個個體
+* 增加連續未評估計數器，優化個體輪換策略
+* 為重要方法添加診斷日誌，幫助追蹤評估和進化狀態
+* 改進 `_evolve()` 方法的邏輯，優化無評估數據時的處理方式
+* 確保在進化或切換個體時重置評估時間計數器
+
+#### 修改的文件
+* 修改: `ai/controllers/nerl_controller.py` - 改進個體評估和進化機制
+* 修改: `CHANGELOG.md` - 更新版本信息
+
+## v0.5.5 (2024-04-10)
+
+### 改進：優化 DQN 控制器的訓練機制
+
+* **改進描述**：
+  優化了 DQN 控制器的訓練機制，增強其在低交通流量環境下的學習能力。
+
+#### 功能改進
+* 增加完善的診斷日誌，幫助追蹤訓練過程和記憶庫狀態
+* 改進狀態和動作的記錄邏輯，確保在各種決策情境下都能正確收集訓練樣本
+* 在強制方向切換和最小綠燈時間約束情況下，也記錄狀態和動作用於學習
+* 優化訓練過程中的日誌輸出，每 500 ticks 顯示記憶庫大小和探索率
+* 明確區分哪些情境適合用於訓練，哪些不適合
+
+#### 修改的文件
+* 修改: `ai/controllers/dqn_controller.py` - 優化訓練機制和診斷日誌
+* 修改: `CHANGELOG.md` - 更新版本信息
+
+## [Unreleased]
+
+### Added
+- 新增 NERL 控制器訓練模式和評估模式切換功能及相關 NetLogo 接口。
+- 新增模型加載功能，允許加載指定 tick 保存的 NERL 模型。
+- 新增列出可用模型的功能。
+- 新增 NERL 模型保存功能，每 5000 ticks 保存最佳個體。
+- 新增 DQN 模型保存功能，每 5000 ticks 自動保存。
+- 新增 DQN 控制器加載特定 tick 模型的功能。
+- 新增 DQN 和 NERL 控制器的防鎖死機制和最小綠燈時間規則。
+- 新增 NERL 控制器參數（種群、精英、錦標賽、交叉、變異率/強度、進化間隔）。
+- 新增 DQN 控制器參數（最小綠燈、偏好因子、最大等待閾值）。
+- 為 DQN 和 NERL 添加了狀態空間、動作空間和神經網絡架構說明。
+- 為 DQN 添加了獎勵函數設計說明。
+- README 中增加了 DQN 和 NERL 控制器的詳細說明，包括狀態、動作、獎勵、架構、訓練和加載方式。
+- 為 Queue-based 控制器添加了綠波機制和單向交通優化。
+- README 中增加了訂單配置參數修改說明。
+- README 中增加了調適訊息控制系統說明。
+- README 中增加了 Queue-based 控制器的機器人狀態權重說明。
+- 為 Queue-based 控制器綠波機制添加了短距離交叉路口優化。
+
+### Changed
+- 更新 README 中的使用方法，包含 DQN 和 NERL 的模型加載和模式切換說明。
+- 更新 NERL 控制器的進化邏輯，使用精英保留、錦標賽選擇、均勻交叉和高斯變異。
+- 更新 DQN 訓練邏輯，包括批次訓練、目標網絡更新和模型自動保存。
+- 優化 Queue-based 控制器綠波機制，使用平方根距離衰減並增加基礎影響值。
+- 增加 Queue-based 控制器識別相鄰交叉路口的距離至 15。
+
+### Fixed
+- (此處尚未記錄具體修復)
+
+### Analyzed
+- 分析並確認 NERL 控制器的適應度函數是基於與 DQN 相同的即時獎勵，在進化間隔內的累積平均值。
+- 分析並確認 NERL 的進化間隔 `evolution_interval` 設為 15 ticks，評估基於此前 15 ticks 的表現。討論了該間隔長短的利弊，指出其為經驗性超參數。
+- 釐清 DQN 的獎勵計算發生在每個 tick 基於有效的狀態轉移 (s, a, s') -> r，而網絡訓練則是以固定間隔（如 64 ticks）從經驗回放池採樣進行。
+- 釐清 NERL 的適應度計算發生在每個進化間隔 (15 ticks) 結束時，基於該窗口內所有決策的平均即時獎勵。
+- 分析代碼確認 DQN 訓練監控主要依賴間接觀察仿真 KPI 和基本訓練日誌（如記憶庫大小、epsilon），缺乏內建的 Loss、Q 值或累積獎勵追蹤。
+- 分析代碼確認 NERL 進化監控主要依賴打印每一代（進化間隔）的最佳適應度 (`best_fitness`)，缺乏平均適應度追蹤和與仿真 KPI 的直接關聯記錄。
+
+### Added
+- 新增在 `ai/controllers/nerl_controller.py` 中對 `self.individual_eval_time` 和 `self.consecutive_no_evaluation` 的重置，以確保在進化後新個體的評估計時器被正確初始化。
+- 新增在進化失敗且沒有個體被評估時，切換到下一個個體進行評估的邏輯，防止卡在無法評估的個體上。
+- 新增診斷日誌，以便追蹤 NERL 控制器中的進化過程和個體評估狀態。
+- 在 `DQNController` 的 `train` 方法中添加診斷日誌，以便追蹤缺少先前狀態或動作的情況。
+- 在 `DQNController` 的 `train` 方法中添加診斷日誌，追蹤訓練觸發、記憶體大小和目標網絡更新。
+
+### Changed
+- 修改 `ai/controllers/nerl_controller.py` 的 `_evolve` 方法，確保只有在至少一個個體被評估後才執行進化，並添加相關日誌。
+- 修改 `ai/controllers/nerl_controller.py` 的 `train` 方法，增加了個體評估超時機制，如果一個個體評估時間過長且未產生評估數據，則切換到下一個個體。
+- 在 `ai/controllers/nerl_controller.py` 的 `train` 方法中移除對 `self.previous_states` 的不必要更新。
+
+### Fixed
+- 修正 `ai/controllers/nerl_controller.py` 中的 `_tournament_selection` 方法，確保返回的是索引而不是布爾值。
+
+### Removed
+- 移除 `ai/controllers/dqn_controller.py` 中 `train` 方法內不必要的 reward 計算 (已在外部計算)。
+
+### Deprecated
+
+### Security
+
+### Docs
+- 釐清 DQN 訓練停止條件：程式碼本身沒有定義自動停止條件，訓練會隨 NetLogo 模擬持續進行，模型會定期保存。需要手動停止模擬來結束訓練。
+- 釐清訂單生成時間：訂單根據 `order_period_time` 參數，在模擬開始後的 3 或 5 小時內生成完畢（約 10800 或 18000 ticks），而非持續生成。
+- 釐清訂單生成機制：訂單在模擬 setup 階段通過 `lib/generator/order_generator.py` 生成，基於泊松分佈（到達時間）、幾何分佈（物品種類數）、加權隨機選擇（具體物品）和常態分佈（物品數量）。若訂單檔 (`generated_order.csv` 等) 已存在，則直接使用，不重新生成。
+
+## 2024-07-25
+
+- 在`netlogo.py`的`tick`函數中加入英文調試日誌，以追蹤潛在的超時問題。
+
+- 修復補貨站選擇邏輯，改為根據實際機器人負載 (robot_ids) 選擇，而非錯誤的訂單數量 (order_ids)，並為補貨站添加容量限制 (max_robots)。
+
+### Fixed
+- (此處尚未記錄具體修復)
+
+### Added
+- 新增 NERL 適應度追蹤功能，記錄每一代的最佳和平均適應度。
+- 在性能報告中新增 NERL 適應度演化圖表，視覺化 Best Fitness 和 Average Fitness 隨世代的變化趨勢。
+
+### Analyzed
+- 分析並確認 NERL 控制器的適應度函數是基於與 DQN 相同的即時獎勵，在進化間隔內的累積平均值。
+
+### Added
+- 新增 NERL 適應度追蹤功能，記錄每一代的最佳和平均適應度。
+- 在性能報告中新增 NERL 適應度演化圖表，視覺化 Best Fitness 和 Average Fitness 隨世代的變化趨勢。
+
+### Changed
+- 優化 NERL 進化觸發機制，確保每個模擬時間刻 (tick) 最多只觸發一次進化，而不是基於處理的交叉路口數量。
+
+### Analyzed
+- 分析並確認 NERL 控制器的適應度函數是基於與 DQN 相同的即時獎勵，在進化間隔內的累積平均值。
+
+### Fixed
+- 修復在 `IntersectionManager` 中因未匯入 `NEController` 導致的 `NameError`。
+
+### Analyzed
+- 分析並確認 NERL 控制器的適應度函數是基於與 DQN 相同的即時獎勵，在進化間隔內的累積平均值。
+
+- 檢查並分析了揀貨台訂單分配邏輯 (`findHighestSimilarityStation`)。發現目前是基於 SKU 相似度分配，可能導致負載不均。
+
+### Changed
+- 修改揀貨台分配邏輯 (`findHighestSimilarityStation`)，結合 SKU 相似度和工作站當前負載（可用容量比例）計算綜合優先級分數。
+- 調整揀貨台優先級分數計算權重，將可用容量比例 (`load_score`) 乘以最大訂單數 (`max_orders`)，使其與 SKU 相似度分數更具可比性。
+
+## [Unreleased]
+
+### Fixed
+- 修復了 `world/warehouse.py` 中因找不到可用補貨站 (replenishment station) 而導致的 `AttributeError: 'NoneType' object has no attribute 'id'` 錯誤。加入了對 `station_replenish` 是否為 `None` 的檢查。
+
+## [Unreleased]
+
+### Changed
+- 修改 `findAvailableReplenishmentStation` 邏輯 (`world/managers/station_manager.py`)：在所有補貨站都達到容量上限時，不再返回 `None`，而是選擇負載最低（即使已滿）的站點，以確保補貨任務總能被指派（只要存在補貨站）。
+
+### Fixed
+// ... existing code ...

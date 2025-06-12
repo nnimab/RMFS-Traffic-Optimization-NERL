@@ -47,17 +47,20 @@ def setup():
 
 def tick():
     try:
+        print("DEBUG: Loading state...")
         # print("========tick========")
 
         # Load the simulation state
         with open('netlogo.state', 'rb') as file:
             warehouse: Warehouse = pickle.load(file)
+        print("DEBUG: State loaded.")
 
         # Check Robot debug level before printing
         from world.entities.robot import Robot
         if Robot.DEBUG_LEVEL > 1:
             print("before tick", warehouse._tick)
 
+        print("DEBUG: Collecting time series data...")
         # Update each object with the current warehouse context
 
         # 收集時間序列數據
@@ -73,18 +76,31 @@ def tick():
             
         # 嘗試收集時間序列數據
         performance_reporter.collect_time_series_data()
+        print("DEBUG: Time series data collected.")
+
+        print("DEBUG: Starting warehouse tick...")
 
         # Perform a simulation tick
         warehouse.tick()
+        print("DEBUG: Warehouse tick finished.")
+
+        print("DEBUG: Generating results...")
 
         # Generate results after the tick
         next_result = warehouse.generateResult()
+        print("DEBUG: Results generated.")
+
+        print("DEBUG: Saving state...")
+
         with open('netlogo.state', 'wb') as config_dictionary_file:
             pickle.dump(warehouse, config_dictionary_file)
+        print("DEBUG: State saved.")
+
         return [next_result, warehouse.total_energy, len(warehouse.job_queue), warehouse.stop_and_go,
                 warehouse.total_turning, warehouse._tick]
     except Exception as e:
         # Print complete stack trace
+        print("ERROR: Exception in tick function!")
         traceback.print_exc()
         return "An error occurred. See the details above."
 
@@ -178,7 +194,7 @@ def set_queue_based_controller(min_green_time=1, bias_factor=1.5):
 
 
 # 設置DQN控制器的快捷函數
-def set_dqn_controller(exploration_rate=0.2, load_model_tick=None):
+def set_dqn_controller(exploration_rate=0.6, load_model_tick=None):
     """
     設置DQN控制器
     
@@ -215,30 +231,186 @@ def set_dqn_controller(exploration_rate=0.2, load_model_tick=None):
     return result
 
 
+# 設置NERL控制器的快捷函數
+def set_nerl_controller(exploration_rate=0.6, load_model_tick=None):
+    """
+    設置NERL（神經進化強化學習）控制器
+    
+    Args:
+        exploration_rate (float): 探索率，控制隨機選擇動作的概率
+        load_model_tick (int, optional): 加載特定時間點保存的模型（如5000,10000,20000）
+    
+    Returns:
+        bool: 成功返回True，失敗返回False
+    """
+    result = set_traffic_controller("nerl", exploration_rate=exploration_rate)
+    
+    # 如果設置成功且指定了模型，嘗試加載模型
+    if result and load_model_tick is not None:
+        try:
+            with open('netlogo.state', 'rb') as file:
+                warehouse: Warehouse = pickle.load(file)
+                
+            # 嘗試加載特定ticks的模型
+            if hasattr(warehouse.intersection_manager, 'controller'):
+                load_success = warehouse.intersection_manager.controller.load_model(tick=load_model_tick)
+                
+                # 保存更新後的狀態
+                with open('netlogo.state', 'wb') as file:
+                    pickle.dump(warehouse, file)
+                    
+                print(f"NERL model loading {'successful' if load_success else 'failed'} for tick {load_model_tick}")
+                return load_success
+        except Exception as e:
+            print(f"Error when loading model: {e}")
+            traceback.print_exc()
+            return False
+    
+    return result
+
+
 # 列出可用的模型函數
-def list_available_models():
-    """List all available DQN model ticks from saved files."""
+def list_available_models(controller_type="all"):
+    """
+    列出可用的模型及其時間點
+    
+    Args:
+        controller_type (str): 控制器類型，可以是"dqn"、"nerl"或"all"（所有類型）
+        
+    Returns:
+        dict: 包含不同控制器類型的可用模型時間點
+    """
     try:
-        model_ticks = []
+        models_info = {
+            "dqn": [],
+            "nerl": []
+        }
         
-        # Look for DQN model files in the models directory
-        models_dir = PARENT_DIRECTORY + '/data/output/models/'
-        if os.path.exists(models_dir):
-            for filename in os.listdir(models_dir):
-                if filename.startswith('dqn_model_') and filename.endswith('.h5'):
-                    # Extract tick number from filename
-                    try:
-                        tick_str = filename.replace('dqn_model_', '').replace('.h5', '')
-                        tick = int(tick_str)
-                        model_ticks.append(tick)
-                    except ValueError:
-                        continue
+        # 檢查models目錄是否存在
+        models_dir = "models"
+        if not os.path.exists(models_dir):
+            return models_info if controller_type == "all" else models_info.get(controller_type, [])
         
-        return sorted(model_ticks)
+        # 遍歷models目錄中的所有文件
+        for filename in os.listdir(models_dir):
+            # DQN模型
+            if filename.startswith('dqn_traffic_') and filename.endswith('.pth'):
+                try:
+                    tick_str = filename.replace('dqn_traffic_', '').replace('.pth', '')
+                    tick = int(tick_str)
+                    models_info["dqn"].append(tick)
+                except ValueError:
+                    continue
+            
+            # NERL模型
+            elif filename.startswith('nerl_traffic_') and filename.endswith('.pth'):
+                try:
+                    tick_str = filename.replace('nerl_traffic_', '').replace('.pth', '')
+                    tick = int(tick_str)
+                    models_info["nerl"].append(tick)
+                except ValueError:
+                    continue
+        
+        # 對時間點進行排序
+        models_info["dqn"] = sorted(models_info["dqn"])
+        models_info["nerl"] = sorted(models_info["nerl"])
+        
+        # 根據請求返回特定控制器類型的模型或所有模型
+        if controller_type == "all":
+            return models_info
+        else:
+            return models_info.get(controller_type, [])
+    
     except Exception as e:
-        # Print complete stack trace
+        # 打印完整堆疊信息
         traceback.print_exc()
-        return []
+        return {} if controller_type == "all" else []
+
+
+# 設置NERL控制器的訓練/評估模式
+def set_nerl_training_mode(is_training=True):
+    """
+    設置NERL控制器的訓練模式
+    
+    Args:
+        is_training (bool): True為訓練模式，False為評估模式
+        
+    Returns:
+        bool: 操作成功返回True，失敗返回False
+    """
+    try:
+        # 加載模擬狀態
+        with open('netlogo.state', 'rb') as file:
+            warehouse: Warehouse = pickle.load(file)
+        
+        # 檢查當前控制器是否為NERL
+        if warehouse.current_controller != "nerl":
+            print("當前控制器不是NERL控制器，無法設置訓練模式")
+            return False
+        
+        # 設置訓練模式
+        controller = warehouse.intersection_manager.controllers.get("nerl")
+        if controller and hasattr(controller, 'set_training_mode'):
+            controller.set_training_mode(is_training)
+            
+            # 保存更新後的狀態
+            with open('netlogo.state', 'wb') as file:
+                pickle.dump(warehouse, file)
+                
+            mode_str = "訓練" if is_training else "評估"
+            print(f"NERL控制器已設置為{mode_str}模式")
+            return True
+        else:
+            print("無法設置NERL控制器的訓練模式")
+            return False
+            
+    except Exception as e:
+        # 打印完整堆疊信息
+        traceback.print_exc()
+        return False
+
+
+# 添加DQN控制器的訓練/評估模式切換功能
+def set_dqn_training_mode(is_training=True):
+    """
+    設置DQN控制器的訓練模式
+    
+    Args:
+        is_training (bool): True為訓練模式，False為評估模式
+        
+    Returns:
+        bool: 操作成功返回True，失敗返回False
+    """
+    try:
+        # 加載模擬狀態
+        with open('netlogo.state', 'rb') as file:
+            warehouse: Warehouse = pickle.load(file)
+        
+        # 檢查當前控制器是否為DQN
+        if warehouse.current_controller != "dqn":
+            print("Current controller is not DQN controller, cannot set training mode")
+            return False
+        
+        # 設置訓練模式
+        controller = warehouse.intersection_manager.controllers.get("dqn")
+        if controller and hasattr(controller, 'set_training_mode'):
+            controller.set_training_mode(is_training)
+            
+            # 保存更新後的狀態
+            with open('netlogo.state', 'wb') as file:
+                pickle.dump(warehouse, file)
+                
+            mode_str = "training" if is_training else "evaluation"
+            print(f"DQN controller set to {mode_str} mode")
+            return True
+        else:
+            print("Cannot set DQN controller training mode")
+            return False
+            
+    except Exception as e:
+        # 打印完整堆疊信息
+        traceback.print_exc()
+        return False
 
 
 def get_all_intersections():

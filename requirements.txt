@@ -1,7 +1,11 @@
-networkx~=3.2.1
-matplotlib
-pandas~=2.2.1
-pip~=24.0
-
-numpy~=1.24.3
-torch~=2.5.0.dev20240708+cu124
+    numpy==1.24.4
+    pandas==2.0.3
+    scikit-learn==1.5.2
+    networkx==3.2.1
+    torch==2.5.0
+    matplotlib==3.7.2
+    python-dateutil==2.8.2
+    pytz==2024.1
+    six==1.17.0
+    joblib==1.4.2
+    threadpoolctl==3.5.0

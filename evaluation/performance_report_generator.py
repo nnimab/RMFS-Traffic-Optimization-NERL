@@ -184,6 +184,11 @@ class PerformanceReportGenerator:
         if comparison_chart_path:
             chart_files.append(comparison_chart_path)
             
+        # 新增：生成 NERL 適應度圖表 (如果適用)
+        nerl_fitness_chart_path = self._create_nerl_fitness_chart(charts_dir)
+        if nerl_fitness_chart_path:
+            chart_files.append(nerl_fitness_chart_path)
+            
         # 恢復原始控制器名稱
         self.controller_name = old_controller_name
             
@@ -350,6 +355,77 @@ class PerformanceReportGenerator:
             return file_path
         except Exception as e:
             print(f"Error generating comparison chart: {e}")
+            return None
+            
+    def _create_nerl_fitness_chart(self, charts_dir):
+        """
+        創建 NERL Best 和 Average Fitness 的時間序列圖表
+        
+        Args:
+            charts_dir (str): 圖表保存目錄
+            
+        Returns:
+            str: 圖表文件路徑，如果數據不存在或繪製失敗則返回None
+        """
+        # 檢查是否為 NERL 控制器，並且是否有歷史數據
+        nerl_controller = None
+        if self.warehouse and self.warehouse.current_controller == "nerl":
+            controller = self.warehouse.intersection_manager.controllers.get('nerl')
+            if controller and hasattr(controller, 'best_fitness_history') and hasattr(controller, 'average_fitness_history'):
+                if controller.best_fitness_history and controller.average_fitness_history:
+                    nerl_controller = controller
+        
+        if not nerl_controller:
+            # print("NERL controller or fitness history not found, skipping fitness chart.")
+            return None # 不是 NERL 或沒有數據，不生成圖表
+            
+        try:
+            best_history = nerl_controller.best_fitness_history
+            avg_history = nerl_controller.average_fitness_history
+            generations = list(range(len(best_history)))
+            
+            if not generations:
+                print("NERL fitness history is empty, skipping fitness chart.")
+                return None
+                
+            plt.figure(figsize=(10, 6))
+            plt.plot(generations, best_history, label='Best Fitness', marker='o')
+            plt.plot(generations, avg_history, label='Average Fitness', marker='x')
+            plt.title(f"NERL Fitness Evolution - {self.controller_name}")
+            plt.xlabel("Generation")
+            plt.ylabel("Fitness Score")
+            plt.legend()
+            plt.grid(True)
+            
+            # 添加趨勢線 (如果數據點足夠)
+            if len(generations) > 1:
+                # Best Fitness Trend
+                x = np.array(generations)
+                y_best = np.array(best_history)
+                coeffs_best = np.polyfit(x, y_best, 1)
+                poly_line_best = np.poly1d(coeffs_best)
+                plt.plot(x, poly_line_best(x), "b--", alpha=0.5, label=f'Best Trend ({coeffs_best[0]:.2f})')
+                
+                # Average Fitness Trend
+                y_avg = np.array(avg_history)
+                coeffs_avg = np.polyfit(x, y_avg, 1)
+                poly_line_avg = np.poly1d(coeffs_avg)
+                plt.plot(x, poly_line_avg(x), "r--", alpha=0.5, label=f'Avg Trend ({coeffs_avg[0]:.2f})')
+                
+                plt.legend() # 更新圖例以包含趨勢線
+
+            # 保存圖表
+            file_name = f"chart_nerl_fitness_{self.controller_name}_{self.date_string}.png"
+            file_path = os.path.join(charts_dir, file_name)
+            plt.savefig(file_path, dpi=300, bbox_inches='tight')
+            plt.close()
+            
+            print(f"NERL Fitness chart generated: {file_path}")
+            return file_path
+        except Exception as e:
+            print(f"Error generating NERL fitness chart: {e}")
+            import traceback
+            traceback.print_exc() # 打印詳細錯誤
             return None
             
     def generate_report(self):

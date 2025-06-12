@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import List, Optional, TYPE_CHECKING, Dict
 from ai.deep_q_network import DeepQNetwork
 from ai.traffic_controller import TrafficController, TrafficControllerFactory
+from ai.controllers.nerl_controller import NEController
 from lib.file import *
 from world.entities.intersection import Intersection
 if TYPE_CHECKING:
@@ -77,6 +78,25 @@ class IntersectionManager:
                         controller.train(intersection, tick, self.warehouse)
                 except Exception as e:
                     print(f"Error during DQN training: {e}")
+            
+            # 如果是NERL控制器，對其進行訓練
+            if self.current_controller_type == "nerl":
+                try:
+                    # 確保控制器有train方法
+                    if hasattr(controller, 'train') and callable(controller.train):
+                        controller.train(intersection, tick, self.warehouse)
+                except Exception as e:
+                    print(f"Error during NERL training: {e}")
+                    
+        # --- AFTER THE LOOP ---
+        # print(f"DEBUG: Finished intersection loop for tick {tick}. Preparing for evolution check.")
+        # 在處理完所有交叉口後，檢查NERL進化條件
+        if self.current_controller_type == "nerl" and isinstance(controller, NEController) and controller.is_training:
+            # print(f"DEBUG: Triggering evolution check for tick {tick} AFTER intersection loop.")
+            try:
+                controller.step_evolution_counter_and_evolve(tick)
+            except Exception as e:
+                print(f"Error during NERL evolution step: {e}")
                     
     def getIntersectionByCoordinate(self, x, y):
         return self.coordinate_to_intersection.get((x, y), None)

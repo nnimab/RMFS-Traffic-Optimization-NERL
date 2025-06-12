@@ -17,13 +17,45 @@ globals [
   total_turning
   current_controller
   current_tick
+  python_executable_path
 ]
 
 to setup
   ca
   let result ""
-  py:setup py:python3
+  set python_executable_path "" ; 先初始化變數
+
+  ; --- 開始讀取設定檔 ---
+  if not file-exists? "python_config.txt" [
+    user-message (word "錯誤：找不到 python_config.txt！請建立此檔案並填入 rmfs 環境的 Python 路徑。")
+    stop
+  ]
+
+  ; 檔案存在，開啟讀取
+  file-open "python_config.txt"
+  if file-at-end? [
+    user-message (word "錯誤：python_config.txt 為空！請填入 rmfs 環境的 Python 路徑。")
+    file-close
+    stop
+  ]
+
+  ; 讀取第一行
+  set python_executable_path file-read-line
+  file-close ; 讀完就關閉
+
+  ; 檢查讀取的內容是否為空
+  if python_executable_path = "" [
+    user-message (word "錯誤：python_config.txt 讀取到的路徑為空！請檢查檔案內容。")
+    stop
+  ]
+  ; --- 結束讀取設定檔 ---
+
+  show (word "讀取到的 Python 路徑: " python_executable_path) ; 添加一個顯示，確認讀取成功
+
+  ; 使用讀取到的路徑進行設定
+  py:setup python_executable_path
   (py:run
+    "import sys; print(f'NetLogo is using Python from: {sys.executable}')"
     "import netlogo"
     "item = netlogo.setup()")
   set result py:runresult "item"
@@ -139,9 +171,9 @@ to set-time-based
   let result py:runresult "result"
   ifelse result [
     set current_controller "時間基"
-    show "已設置時間基控制器"
+    show "Time-based controller set successfully"
   ] [
-    show "設置時間基控制器失敗"
+    show "Failed to set time-based controller"
   ]
 end
 
@@ -152,9 +184,9 @@ to set-queue-based
   let result py:runresult "result"
   ifelse result [
     set current_controller "隊列基"
-    show "已設置隊列基控制器"
+    show "Queue-based controller set successfully"
   ] [
-    show "設置隊列基控制器失敗"
+    show "Failed to set queue-based controller"
   ]
 end
 
@@ -165,9 +197,9 @@ to set-dqn
   let result py:runresult "result"
   ifelse result [
     set current_controller "DQN"
-    show "已設置DQN控制器"
+    show "DQN controller set successfully"
   ] [
-    show "設置DQN控制器失敗"
+    show "Failed to set DQN controller"
   ]
 end
 
@@ -178,9 +210,25 @@ to set-dqn-with-model
   let result py:runresult "result"
   ifelse result [
     set current_controller "DQN(loaded)"
-    show (word "已設置DQN控制器並加載模型(tick " model-tick ")")
+    show (word "DQN controller set with model loaded (tick " model-tick ")")
   ] [
-    show "設置DQN控制器或加載模型失敗"
+    show "Failed to set DQN controller or load model"
+  ]
+end
+
+to set-dqn-training-mode [is-training]
+  (py:run
+    "import netlogo"
+    (word "result = netlogo.set_dqn_training_mode(" (ifelse-value is-training ["True"] ["False"]) ")"))
+  let result py:runresult "result"
+  ifelse result [
+    ifelse is-training [
+      show "DQN controller set to training mode"
+    ] [
+      show "DQN controller set to evaluation mode"
+    ]
+  ] [
+    show "Failed to set DQN controller mode, please make sure DQN controller is set"
   ]
 end
 
@@ -189,9 +237,62 @@ to list-models
     "import netlogo"
     "models = netlogo.list_available_models()")
   let models py:runresult "models"
-  show "可用模型列表:"
+  show "Available model list:"
   foreach models [
     model -> show model
+  ]
+end
+
+to list-models-by-type [controller-type]
+  (py:run
+    "import netlogo"
+    (word "models = netlogo.list_available_models(\"" controller-type "\")"))
+  let models py:runresult "models"
+  show (word "Available " controller-type " model list:")
+  foreach models [
+    model -> show model
+  ]
+end
+
+to set-nerl-controller
+  (py:run
+    "import netlogo"
+    (word "result = netlogo.set_nerl_controller(" exploration-rate ")"))
+  let result py:runresult "result"
+  ifelse result [
+    set current_controller "NERL"
+    show "NERL controller set successfully"
+  ] [
+    show "Failed to set NERL controller"
+  ]
+end
+
+to set-nerl-with-model
+  (py:run
+    "import netlogo"
+    (word "result = netlogo.set_nerl_controller(" exploration-rate ", " model-tick ")"))
+  let result py:runresult "result"
+  ifelse result [
+    set current_controller "NERL(loaded)"
+    show (word "NERL controller set with model loaded (tick " model-tick ")")
+  ] [
+    show "Failed to set NERL controller or load model"
+  ]
+end
+
+to set-nerl-training-mode [is-training]
+  (py:run
+    "import netlogo"
+    (word "result = netlogo.set_nerl_training_mode(" (ifelse-value is-training ["True"] ["False"]) ")"))
+  let result py:runresult "result"
+  ifelse result [
+    ifelse is-training [
+      show "NERL controller set to training mode"
+    ] [
+      show "NERL controller set to evaluation mode"
+    ]
+  ] [
+    show "Failed to set NERL controller mode, please make sure NERL controller is set"
   ]
 end
 
@@ -201,12 +302,11 @@ to generate-report
     "result = netlogo.generate_report()")
   let result py:runresult "result"
   ifelse result [
-    show "性能報告生成成功！"
+    show "Performance report generated successfully!"
   ] [
-    show "性能報告生成失敗，請查看控制台日誌。"
+    show "Failed to generate performance report, please check console log."
   ]
 end
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 15
@@ -237,10 +337,10 @@ ticks
 
 BUTTON
 775
-305
+100
 858
-338
-setup
+133
+Setup
 setup
 NIL
 1
@@ -254,9 +354,9 @@ NIL
 
 BUTTON
 910
-375
+325
 974
-409
+359
 go
 go
 NIL
@@ -271,9 +371,9 @@ NIL
 
 BUTTON
 775
-375
+325
 872
-408
+358
 go-forever
 go
 T
@@ -342,29 +442,12 @@ total_turning
 14
 
 BUTTON
-909
-305
-991
-338
+1115
+360
+1197
+393
 Setup Py
 setup-py
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-775
-105
-855
-139
-時間基控制器
-set-time-based
 NIL
 1
 T
@@ -380,6 +463,23 @@ BUTTON
 145
 855
 179
+時間基控制器
+set-time-based
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+775
+185
+855
+219
 隊列基控制器
 set-queue-based
 NIL
@@ -394,11 +494,28 @@ NIL
 
 BUTTON
 775
-190
+230
 855
-223
+263
 DQN控制器
 set-dqn
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+775
+274
+855
+307
+NERL控制器
+set-nerl-controller
 NIL
 1
 T
@@ -489,17 +606,17 @@ exploration-rate
 exploration-rate
 0
 1
-0.2
+0.6
 0.05
 1
 NIL
 HORIZONTAL
 
 SLIDER
-880
-234
-1052
-267
+1060
+190
+1235
+223
 model-tick
 model-tick
 0
@@ -511,10 +628,10 @@ NIL
 HORIZONTAL
 
 BUTTON
-1061
-191
-1141
-224
+1115
+320
+1195
+353
 查看模型
 list-models
 NIL
@@ -544,6 +661,91 @@ NIL
 NIL
 1
 
+BUTTON
+1061
+275
+1194
+308
+NERL(加載模型)
+set-nerl-with-model
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+880
+275
+994
+308
+NERL訓練模式開
+set-nerl-training-mode true
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+994
+275
+1051
+308
+關
+set-nerl-training-mode false
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+880
+235
+994
+268
+DQN訓練模式開
+set-dqn-training-mode true
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+995
+235
+1052
+268
+關
+set-dqn-training-mode false
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
 MONITOR
 1085
 10
@@ -557,9 +759,9 @@ current_tick
 
 BUTTON
 775
-440
+375
 974
-473
+408
 生成性能報告
 generate-report
 NIL

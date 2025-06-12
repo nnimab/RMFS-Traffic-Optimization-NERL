@@ -124,10 +124,19 @@ class Warehouse:
                         print(f"cihuy masuk")
                         pod: Pod = self.pod_manager.getPodsByCoordinate(o.job.pod_coordinate.x, o.job.pod_coordinate.y)
                         station_replenish = self.station_manager.findAvailableReplenishmentStation()
-                        new_job = self.job_manager.createJob(pod.coordinate, station_id=station_replenish.id)
-                        new_job.addReplenishmentTask(pod)
-                        o.assignJobAndSetToStation(new_job)
-                        
+                        # Check if a replenishment station was found
+                        if station_replenish:
+                            new_job = self.job_manager.createJob(pod.coordinate, station_id=station_replenish.id)
+                            new_job.addReplenishmentTask(pod)
+                            o.assignJobAndSetToStation(new_job)
+                        else:
+                            # Handle the case where no replenishment station is available
+                            print(f"WARNING: No available replenishment station found for pod at {pod.coordinate}. Replenishment job not created.")
+                            # Option: Decide if the robot should do something else, e.g., return pod to storage or wait
+                            # For now, just letting the robot potentially become idle after this job
+                            self.pod_manager.setPodAvailable(o.job.pod_coordinate) # Make the pod available again
+                            o.job.is_finished = True # Mark the original job as finished to avoid reprocessing
+                            o.job = None # Clear the robot's job
 
                 if o.current_state == 'idle' and o.job is not None:
                     self.pod_manager.setPodAvailable(o.job.pod_coordinate)
